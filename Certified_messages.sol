@@ -40,6 +40,7 @@ contract CertifiedMsg {
 
     constructor() {
         _owner = msg.sender;
+        _CFDContract = IERC20(address(0));
     }
 
     modifier onlyOwner() {
@@ -48,7 +49,7 @@ contract CertifiedMsg {
     }
 
     function sendMessage(address to, string calldata message) external {
-        if(msg.sender == _owner){
+        if(msg.sender == _owner || _CFDContract == IERC20(address(0))){
             emit Message(msg.sender, to, message);
         }
         else{
