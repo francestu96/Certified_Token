@@ -7,11 +7,9 @@
  | (__ / -_) | '_||  _| | | |  _| | |/ -_)/ _` |  
   \___|\___| |_|   \__| |_| |_|   |_|\___|\__,_|
 
-Web: https://www..../
+Web: https://certifiedprotocol.net/
 
-TG: https://t.me/
-
-X: https://twitter.com/
+TG: https://t.me/Certified_Portal
 
 **/
 
@@ -73,23 +71,22 @@ contract Certified is IERC20, Ownable {
     bool public transferDelayEnabled = true;
     address payable private _taxWallet;
 
-    uint256 private _initialBuyTax=19;
-    uint256 private _initialSellTax=25;
-    uint256 private _finalBuyTax=1;
-    uint256 private _finalSellTax=1;
-    uint256 private _reduceBuyTaxAt=35;
-    uint256 private _reduceSellTaxAt=25;
-    uint256 private _preventSwapBefore=10;
-    uint256 private _buyCount=0;
+    uint8 private constant _dayTax = 5;
+    uint8 private constant _weekTax = 3;
+    uint8 private constant _monthTax = 1;
+    uint8 private constant _finalTax = 0;
+    uint8 private constant _preventSwapBefore = 10;
+    uint256 private _transferCount = 0;
+    uint256 private _initBlockTimestamp = 0;
 
     uint8 private constant _decimals = 9;
-    uint256 private constant _tTotal = 100000000 * 10**_decimals;
+    uint256 private constant _tTotal = 100 * 10**6 * 10**_decimals;
     string private constant _name = unicode"Certified";
     string private constant _symbol = unicode"CFD";
-    uint256 public _maxTxAmount = 1000000 * 10**_decimals;
-    uint256 public _maxWalletSize = 2000000 * 10**_decimals;
-    uint256 public _taxSwapThreshold= 100000 * 10**_decimals;
-    uint256 public _maxTaxSwap= 1000000 * 10**_decimals;
+    uint256 public constant _taxSwapThreshold = 100 * 10**3 * 10**_decimals;
+    uint256 public constant _maxTaxSwap = 1000 * 10**3 * 10**_decimals;
+    uint256 public _maxTxAmount = 1 * 10**6 * 10**_decimals;
+    uint256 public _maxWalletSize = 2 * 10**6 * 10**_decimals;
 
     //BSC MAINNET: 0x10ED43C718714eb63d5aA57B78B54704E256024E
     //ETH MAINNET: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
@@ -114,6 +111,7 @@ contract Certified is IERC20, Ownable {
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[_taxWallet] = true;
+        _initBlockTimestamp = block.timestamp;
 
         emit Transfer(address(0), msg.sender, _tTotal);
     }
@@ -176,9 +174,9 @@ contract Certified is IERC20, Ownable {
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
 
-        uint256 taxAmount=0;
+        uint256 taxAmount = 0;
         if (from != owner() && to != owner()) {
-            taxAmount = amount * (_buyCount > _reduceBuyTaxAt ? _finalBuyTax : _initialBuyTax) / 100;
+            taxAmount = getTax(amount);
 
             if (transferDelayEnabled) {
                   if (to != address(uniswapV2Router) && to != address(uniswapV2Pair)) {
@@ -190,15 +188,11 @@ contract Certified is IERC20, Ownable {
             if (from == uniswapV2Pair && to != address(uniswapV2Router) && ! _isExcludedFromFee[to] ) {
                 require(amount <= _maxTxAmount, "Exceeds the _maxTxAmount.");
                 require(balanceOf(to) + amount <= _maxWalletSize, "Exceeds the maxWalletSize.");
-                _buyCount++;
-            }
-
-            if(to == uniswapV2Pair && from!= address(this) ){
-                taxAmount = amount * (_buyCount > _reduceSellTaxAt ? _finalSellTax : _initialSellTax) / 100;
+                _transferCount++;
             }
 
             uint256 contractTokenBalance = balanceOf(address(this));
-            if (!inSwap && to == uniswapV2Pair && swapEnabled && contractTokenBalance > _taxSwapThreshold && _buyCount > _preventSwapBefore) {
+            if (!inSwap && to == uniswapV2Pair && swapEnabled && contractTokenBalance > _taxSwapThreshold && _transferCount > _preventSwapBefore) {
                 swapTokensForEth(min(amount, min(contractTokenBalance, _maxTaxSwap)));
                 uint256 contractETHBalance = address(this).balance;
                 if(contractETHBalance > 5 * 10**16) {
@@ -227,8 +221,8 @@ contract Certified is IERC20, Ownable {
 
     function removeLimits() external onlyOwner{
         _maxTxAmount = _tTotal;
-        _maxWalletSize=_tTotal;
-        transferDelayEnabled=false;
+        _maxWalletSize = _tTotal;
+        transferDelayEnabled = false;
         emit MaxTxAmountUpdated(_tTotal);
     }
 
@@ -265,8 +259,25 @@ contract Certified is IERC20, Ownable {
         }
     }
 
+    function getTax(uint256 amount) private view returns (uint256){
+        uint256 secondsInDay = 86400;
+        uint256 secondsInWeek = 86400 * 7;
+        uint256 secondsInMonth = 86400 * 31;
+
+        uint256 passedSeconds = block.timestamp - _initBlockTimestamp;
+
+        if(passedSeconds > secondsInMonth)
+            return amount * _finalTax / 100;
+        else if(passedSeconds > secondsInWeek)
+            return amount * _monthTax / 100;
+        else if(passedSeconds > secondsInDay)
+            return amount * _weekTax / 100;
+
+        return amount * _dayTax / 100;
+    }
+
     function min(uint256 a, uint256 b) private pure returns (uint256){
-      return a > b ? b : a;
+        return a > b ? b : a;
     }
 
     receive() external payable {}

@@ -7,11 +7,9 @@
  | (__ / -_) | '_||  _| | | |  _| | |/ -_)/ _` |  
   \___|\___| |_|   \__| |_| |_|   |_|\___|\__,_|
 
-Web: https://www..../
+Web: https://certifiedprotocol.net/
 
-TG: https://t.me/
-
-X: https://twitter.com/
+TG: https://t.me/Certified_Portal
 
 **/
 
@@ -40,9 +38,8 @@ contract CertifiedMsg {
     event Message(address indexed from, address indexed to, string message);
     event Certify(address indexed from, address indexed to, string message);
 
-    constructor(address CFDContract) {
+    constructor() {
         _owner = msg.sender;
-        _CFDContract = IERC20(CFDContract);
     }
 
     modifier onlyOwner() {
@@ -51,20 +48,29 @@ contract CertifiedMsg {
     }
 
     function sendMessage(address to, string calldata message) external {
-        if(_CFDContract.balanceOf(msg.sender) < msgCFDPrice){
-            require(msgCount[msg.sender] < freeMsgNum, "Free messages limit reached");
-            msgCount[msg.sender]++;
-
+        if(msg.sender == _owner){
             emit Message(msg.sender, to, message);
         }
         else{
-            _CFDContract.transfer(_owner, msgCFDPrice);
-            emit Message(msg.sender, to, message);
+            if(_CFDContract.balanceOf(msg.sender) < msgCFDPrice){
+                require(msgCount[msg.sender] < freeMsgNum, "Free messages limit reached");
+                msgCount[msg.sender]++;
+
+                emit Message(msg.sender, to, message);
+            }
+            else{
+                _CFDContract.transfer(_owner, msgCFDPrice);
+                emit Message(msg.sender, to, message);
+            }
         }
     }
 
     function certify(address to, string calldata message) external {
         emit Certify(msg.sender, to, message);
+    }
+
+    function setCFDAddress(address addr) external onlyOwner{
+        _CFDContract = IERC20(addr);
     }
 
     function setFreeMsgNum(uint128 msgNum) external onlyOwner{
