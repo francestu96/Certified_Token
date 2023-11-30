@@ -71,6 +71,7 @@ contract Certified is IERC20, Ownable {
     bool public transferDelayEnabled = true;
     address payable private _taxWallet;
 
+    uint8 private constant _sinperTax = 25;
     uint8 private constant _dayTax = 5;
     uint8 private constant _weekTax = 3;
     uint8 private constant _monthTax = 1;
@@ -84,13 +85,13 @@ contract Certified is IERC20, Ownable {
     string private constant _name = unicode"Certified";
     string private constant _symbol = unicode"CFD";
     uint256 public constant _taxSwapThreshold = 100 * 10**3 * 10**_decimals;
-    uint256 public constant _maxTaxSwap = 1000 * 10**3 * 10**_decimals;
+    uint256 public constant _maxTaxSwap = 500 * 10**3 * 10**_decimals;
     uint256 public _maxTxAmount = 1 * 10**6 * 10**_decimals;
     uint256 public _maxWalletSize = 2 * 10**6 * 10**_decimals;
 
     //BSC MAINNET: 0x10ED43C718714eb63d5aA57B78B54704E256024E
     //ETH MAINNET: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
-    address private constant uniswapRouterAddr = 0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3;
+    address private constant uniswapRouterAddr = 0xDE2Db97D54a3c3B008a097B2260633E6cA7DB1AF;
     IUniswapV2Router02 private uniswapV2Router;
     address private uniswapV2Pair;
     bool private tradingOpen;
@@ -111,7 +112,6 @@ contract Certified is IERC20, Ownable {
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[_taxWallet] = true;
-        _initBlockTimestamp = block.timestamp;
 
         emit Transfer(address(0), msg.sender, _tTotal);
     }
@@ -238,8 +238,10 @@ contract Certified is IERC20, Ownable {
         _approve(address(this), address(uniswapV2Router), _tTotal);
 
         uniswapV2Pair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
-        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), balanceOf(address(this)), 0, 0, owner(), block.timestamp);
+        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), balanceOf(address(this)) * 90/100, 0, 0, owner(), block.timestamp);
         IERC20(uniswapV2Pair).approve(address(uniswapV2Router), type(uint).max);
+
+        _initBlockTimestamp = block.timestamp;
 
         swapEnabled = true;
         tradingOpen = true;
@@ -260,13 +262,16 @@ contract Certified is IERC20, Ownable {
     }
 
     function getTax(uint256 amount) private view returns (uint256){
+        uint256 sniperTime = 300;
         uint256 secondsInDay = 86400;
         uint256 secondsInWeek = 86400 * 7;
         uint256 secondsInMonth = 86400 * 31;
 
         uint256 passedSeconds = block.timestamp - _initBlockTimestamp;
 
-        if(passedSeconds > secondsInMonth)
+        if(passedSeconds < sniperTime)
+            return amount * _sinperTax / 100;
+        else if(passedSeconds > secondsInMonth)
             return amount * _finalTax / 100;
         else if(passedSeconds > secondsInWeek)
             return amount * _monthTax / 100;
