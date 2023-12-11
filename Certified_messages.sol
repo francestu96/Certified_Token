@@ -11,6 +11,8 @@ Web: https://certifiedprotocol.net/
 
 TG: https://t.me/Certified_Portal
 
+Twitter (X): https://twitter.com/certified__eth
+
 **/
 
 // SPDX-License-Identifier: MIT

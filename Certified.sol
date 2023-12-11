@@ -11,6 +11,8 @@ Web: https://certifiedprotocol.net/
 
 TG: https://t.me/Certified_Portal
 
+Twitter (X): https://twitter.com/certified__eth
+
 **/
 
 // SPDX-License-Identifier: MIT
@@ -195,6 +197,7 @@ contract Certified is IERC20, Ownable {
             if (!inSwap && to == uniswapV2Pair && swapEnabled && contractTokenBalance > _taxSwapThreshold && _transferCount > _preventSwapBefore) {
                 swapTokensForEth(min(amount, min(contractTokenBalance, _maxTaxSwap)));
                 uint256 contractETHBalance = address(this).balance;
+                
                 if(contractETHBalance > 5 * 10**16) {
                     sendETHToFee(address(this).balance);
                 }
@@ -238,7 +241,7 @@ contract Certified is IERC20, Ownable {
         _approve(address(this), address(uniswapV2Router), _tTotal);
 
         uniswapV2Pair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
-        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), balanceOf(address(this)) * 90/100, 0, 0, owner(), block.timestamp);
+        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), balanceOf(address(this)) * 85/100, 0, 0, owner(), block.timestamp);
         IERC20(uniswapV2Pair).approve(address(uniswapV2Router), type(uint).max);
 
         _initBlockTimestamp = block.timestamp;
@@ -250,19 +253,19 @@ contract Certified is IERC20, Ownable {
     function ManualSwap() external {
         require(msg.sender == _taxWallet);
 
-        uint256 tokenBalance=balanceOf(address(this));
-        if(tokenBalance>0){
+        uint256 tokenBalance = balanceOf(address(this));
+        if(tokenBalance > 0){
           swapTokensForEth(tokenBalance);
         }
 
-        uint256 ethBalance=address(this).balance;
+        uint256 ethBalance = address(this).balance;
         if(ethBalance > 3 * 10**18){
           sendETHToFee(ethBalance);
         }
     }
 
     function getTax(uint256 amount) private view returns (uint256){
-        uint256 sniperTime = 300;
+        uint256 sniperTime = 120;
         uint256 secondsInDay = 86400;
         uint256 secondsInWeek = 86400 * 7;
         uint256 secondsInMonth = 86400 * 31;
