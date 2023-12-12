@@ -46,13 +46,13 @@ contract CertifiedPayments {
     }
 
     mapping (address => mapping (address => mapping (uint256 => PaymentStruct))) public pendingPayments;    
-    mapping (address => mapping (address => uint64)) public paymentsCounter; 
-    HoldStruct public holdCFDTier1 = HoldStruct({threshold: 500 * 10**9, fee: 5});
-    HoldStruct public holdCFDTier2 = HoldStruct({threshold: 5000 * 10**9, fee: 1});
+    mapping (address => mapping (address => uint16)) public paymentsCounter; 
+    HoldStruct public holdCFDTier1 = HoldStruct({threshold: 500 * 10**3 * 10**9, fee: 5});
+    HoldStruct public holdCFDTier2 = HoldStruct({threshold: 5000 * 10**3 * 10**9, fee: 1});
     uint32 public releaseTime = 604800;
 
-    event Payment(address indexed from, address indexed to, address indexed certifier, uint256 amount, string message);
-    event Certify(address indexed from, address indexed to, uint16 indexed paymentIndex, bool result);
+    event Payment(address indexed from, address indexed to, address indexed certifier, uint16 paymentIndex, uint256 amount, string message);
+    event Certify(address indexed from, address indexed to, address indexed certifier, uint16 paymentIndex, bool result);
 
     constructor() {
         _owner = msg.sender;
@@ -83,9 +83,10 @@ contract CertifiedPayments {
         pendingPayments[msg.sender][to][paymentsCounter[msg.sender][to]].certifier = certifier;
         pendingPayments[msg.sender][to][paymentsCounter[msg.sender][to]].certifierFees = certifierFees;
         pendingPayments[msg.sender][to][paymentsCounter[msg.sender][to]].timestamp = block.timestamp;
-        paymentsCounter[msg.sender][to]++;
+        
+        emit Payment(msg.sender, to, certifier, paymentsCounter[msg.sender][to], value, message);
 
-        emit Payment(msg.sender, to, certifier, value, message);
+        paymentsCounter[msg.sender][to]++;
     }
 
     function certify(address payable from, address payable to, uint16 paymentIndex, bool result) external {
@@ -105,7 +106,7 @@ contract CertifiedPayments {
 
         pendingPayments[from][to][paymentIndex].amount = 0;
         
-        emit Certify(from, to, paymentIndex, result);
+        emit Certify(from, to, pendingPayments[from][to][paymentIndex].certifier, paymentIndex, result);
     }
 
     function checkReleaseTime(address to, uint64 paymentIndex) external view returns (uint256) {
