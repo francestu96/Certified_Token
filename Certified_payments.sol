@@ -68,7 +68,7 @@ contract CertifiedPayments {
         require(msg.value > 0, "No ETH sent");
         uint256 value = msg.value;
 
-        if(msg.sender != _owner || _CFDContract != IERC20(address(0))){
+        if(msg.sender != _owner && _CFDContract != IERC20(address(0))){
             require(_CFDContract.balanceOf(msg.sender) >= holdCFDTier1.threshold, "Insufficient CFD balance");
             
             if(_CFDContract.balanceOf(msg.sender) < holdCFDTier2.threshold){
